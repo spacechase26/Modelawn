@@ -17,5 +17,4 @@ fun ModesState.deleteMode(id: String): ModesState = copy(
 )
 
 /** Sets the active mode to [id] if such a mode exists; otherwise no change. */
-fun ModesState.activate(id: String): ModesState =
-    if (modes.any { it.id == id }) copy(activeModeId = id) else this
+fun ModesState.activate(id: String): ModesState = if (modes.any { it.id == id }) copy(activeModeId = id) else this

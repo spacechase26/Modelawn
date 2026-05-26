@@ -11,10 +11,9 @@ object ModeProvider {
     @Volatile
     private var repo: ModeRepository? = null
 
-    fun repository(context: Context): ModeRepository =
-        repo ?: synchronized(this) {
-            repo ?: build(context.applicationContext).also { repo = it }
-        }
+    fun repository(context: Context): ModeRepository = repo ?: synchronized(this) {
+        repo ?: build(context.applicationContext).also { repo = it }
+    }
 
     private fun build(appContext: Context): ModeRepository {
         val engine = ModeEngine(appContext)

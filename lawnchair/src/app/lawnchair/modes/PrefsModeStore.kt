@@ -16,7 +16,10 @@ import kotlinx.serialization.json.Json
  */
 class PrefsModeStore(context: Context) : ModeStore {
     private val prefs = PreferenceManager2.getInstance(context)
-    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
     private val _state = MutableStateFlow(load())
     override val state: StateFlow<ModesState> = _state
 
