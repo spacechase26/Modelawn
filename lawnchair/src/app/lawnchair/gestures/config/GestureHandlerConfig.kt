@@ -8,6 +8,7 @@ import androidx.annotation.DrawableRes
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.createBitmap
 import app.lawnchair.gestures.handlers.GestureHandler
+import app.lawnchair.gestures.handlers.ModeSwitcherGestureHandler
 import app.lawnchair.gestures.handlers.NoOpGestureHandler
 import app.lawnchair.gestures.handlers.OpenAppDrawerGestureHandler
 import app.lawnchair.gestures.handlers.OpenAppGestureHandler
@@ -127,6 +128,13 @@ sealed class GestureHandlerConfig {
     data object OpenAssistant :
         Simple(R.string.gesture_handler_open_assistant, ::OpenAssistantHandler) {
         override val iconRes = R.drawable.ic_mic_flat
+    }
+
+    @Serializable
+    @SerialName("openModeSwitcher")
+    data object OpenModeSwitcher :
+        Simple(R.string.gesture_handler_open_mode_switcher, ::ModeSwitcherGestureHandler) {
+        override val iconRes = R.drawable.ic_apps
     }
 
     @Serializable
