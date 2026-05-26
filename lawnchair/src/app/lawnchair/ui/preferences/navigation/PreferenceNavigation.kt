@@ -43,6 +43,7 @@ import app.lawnchair.ui.preferences.destinations.HomeScreenPreferences
 import app.lawnchair.ui.preferences.destinations.IconPackPreferences
 import app.lawnchair.ui.preferences.destinations.IconPickerPreference
 import app.lawnchair.ui.preferences.destinations.LauncherPopupPreference
+import app.lawnchair.ui.preferences.destinations.ModesPreferences
 import app.lawnchair.ui.preferences.destinations.PickAppForGesture
 import app.lawnchair.ui.preferences.destinations.PreferencesDashboard
 import app.lawnchair.ui.preferences.destinations.QuickstepPreferences
@@ -155,6 +156,7 @@ fun PreferenceNavigation(
         composable<AppDrawerHiddenApps>(
             deepLinks = getDeepLink(AppDrawerHiddenApps),
         ) { HiddenAppsPreferences() }
+        composable<AppDrawerModes> { ModesPreferences() }
         composable<AppDrawerAppListToFolder> { backStackEntry ->
             val args = backStackEntry.arguments!!
             val folderInfoId = args.getInt("id")

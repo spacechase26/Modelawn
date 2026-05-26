@@ -51,6 +51,7 @@ import app.lawnchair.ui.preferences.components.layout.ExpandAndShrink
 import app.lawnchair.ui.preferences.components.layout.PreferenceGroup
 import app.lawnchair.ui.preferences.components.layout.PreferenceLayout
 import app.lawnchair.ui.preferences.navigation.AppDrawerHiddenApps
+import app.lawnchair.ui.preferences.navigation.AppDrawerModes
 import com.android.launcher3.R
 
 object AppDrawerRoutes {
@@ -85,6 +86,13 @@ fun AppDrawerPreferences(
                     label = stringResource(id = R.string.hidden_apps_label),
                     destination = AppDrawerHiddenApps,
                     subtitle = resources.getQuantityString(R.plurals.apps_count, hiddenApps.size, hiddenApps.size),
+                )
+            }
+            Item {
+                NavigationActionPreference(
+                    label = "Modes",
+                    destination = AppDrawerModes,
+                    subtitle = "Strict app gating per mode",
                 )
             }
             Item { SearchBarPreference(SearchRoute.DRAWER_SEARCH, showLabel = false) }
