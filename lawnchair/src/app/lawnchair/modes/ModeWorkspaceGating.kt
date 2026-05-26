@@ -26,4 +26,13 @@ object ModeWorkspaceGating {
         val component = item.targetComponent ?: return false
         return hidden.contains(ComponentKey(component, item.user).toString())
     }
+
+    /** [items] minus apps hidden by the active mode — for gating folder previews + open folders. */
+    @JvmStatic
+    fun filterVisible(context: Context, items: List<ItemInfo>): ArrayList<ItemInfo> {
+        val hidden = hiddenComponentKeys(context)
+        val result = ArrayList<ItemInfo>(items.size)
+        for (item in items) if (!isHidden(hidden, item)) result.add(item)
+        return result
+    }
 }

@@ -80,6 +80,7 @@ import androidx.annotation.WorkerThread;
 import androidx.core.content.res.ResourcesCompat;
 
 import androidx.core.view.WindowInsetsCompat;
+import app.lawnchair.modes.ModeWorkspaceGating;
 import com.android.launcher3.AbstractFloatingView;
 import com.android.launcher3.Alarm;
 import com.android.launcher3.CellLayout;
@@ -805,7 +806,8 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
      * is played.
      */
     public void animateOpen() {
-        animateOpen(mInfo.getContents(), 0);
+        // Modes: gate the open folder grid to the active mode's apps (non-destructive).
+        animateOpen(ModeWorkspaceGating.filterVisible(getContext(), mInfo.getContents()), 0);
     }
 
     /**

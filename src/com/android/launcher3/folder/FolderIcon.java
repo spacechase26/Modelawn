@@ -49,6 +49,7 @@ import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import app.lawnchair.modes.ModeWorkspaceGating;
 
 import com.android.app.animation.Interpolators;
 import com.android.launcher3.Alarm;
@@ -666,7 +667,10 @@ public class FolderIcon extends FrameLayout implements FloatingIconViewCompanion
      * Returns the list of items which should be visible in the preview
      */
     public List<ItemInfo> getPreviewItemsOnPage(int page) {
-        return mPreviewVerifier.setFolderInfo(mInfo).previewItemsForPage(page, mInfo.getContents());
+        // Modes: gate the closed-folder preview to the active mode's apps (non-destructive).
+        ArrayList<ItemInfo> all = mInfo.getContents();
+        ArrayList<ItemInfo> visible = ModeWorkspaceGating.filterVisible(getContext(), all);
+        return mPreviewVerifier.setFolderInfo(mInfo).previewItemsForPage(page, visible);
     }
 
     @Override
