@@ -941,7 +941,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
      * Determines whether we should animate the folder opening.
      */
     boolean shouldAnimateOpen(List<ItemInfo> items) {
-        if (items == null || items.size() <= 1) {
+        // Modes: a folder gated to a single visible app must still open (normally Launcher3
+        // refuses to open folders with <= 1 item).
+        if (items == null || items.isEmpty()) {
             Log.d(TAG, "Couldn't animate folder open because items is: " + items);
             return false;
         }
