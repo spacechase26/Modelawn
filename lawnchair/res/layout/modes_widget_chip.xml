@@ -11,5 +11,5 @@
     android:maxLines="1"
     android:paddingHorizontal="12dp"
     android:paddingVertical="14dp"
-    android:textColor="@android:color/system_accent1_900"
+    android:textColor="@color/modes_widget_chip_text"
     android:textSize="14sp" />

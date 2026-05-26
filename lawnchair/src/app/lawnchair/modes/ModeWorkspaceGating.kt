@@ -36,7 +36,9 @@ object ModeWorkspaceGating {
 
             is LauncherAppWidgetInfo -> {
                 val pkg = item.providerName?.packageName
-                pkg != null && hidden.any { it.substringBefore('/') == pkg }
+                // Never hide the launcher's own widgets (e.g. the Modes switcher widget).
+                pkg != null && !pkg.startsWith("app.lawnchair") &&
+                    hidden.any { it.substringBefore('/') == pkg }
             }
 
             else -> {
