@@ -17,11 +17,14 @@
 package app.lawnchair.ui.preferences.destinations
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
@@ -127,6 +130,24 @@ fun ModesPreferences(
                     }
                 }
                 item {
+                    val presets = listOf("🎯", "🏋️", "😴", "💼", "📚", "🎮", "🧘", "🚶", "🌙", "🏠")
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        items(presets) { emoji ->
+                            Text(
+                                text = emoji,
+                                style = MaterialTheme.typography.headlineSmall,
+                                modifier = Modifier
+                                    .clickable { scope.launch { repo.upsert(active.copy(icon = emoji)) } }
+                                    .padding(8.dp),
+                            )
+                        }
+                    }
+                }
+                item {
                     val alarmTime = "Alarm at %02d:%02d".format(active.alarm.hour, active.alarm.minute)
                     val openTimePicker: (() -> Unit)? = if (active.alarm.enabled) {
                         {
@@ -200,10 +221,48 @@ fun ModesPreferences(
                                 ModeProvider.scheduler(context).reschedule(repo.currentState())
                             }
                         },
-                        label = "Auto-activate daily",
-                        description = if (schedule.enabled) "Every day at $scheduleTime — tap to change" else null,
+                        label = "Auto-activate on schedule",
+                        description = if (schedule.enabled) "$scheduleTime on selected days — tap for time" else null,
                         onClick = openScheduleTimePicker,
                     )
+                }
+                if (active.schedule.enabled) {
+                    item {
+                        val sched = active.schedule
+                        val toggleDay: (Int) -> Unit = { day ->
+                            val newDays = sched.daysOfWeek.toMutableSet().apply {
+                                if (contains(day)) remove(day) else add(day)
+                            }
+                            scope.launch {
+                                repo.upsert(active.copy(schedule = sched.copy(daysOfWeek = newDays)))
+                                ModeProvider.scheduler(context).reschedule(repo.currentState())
+                            }
+                        }
+                        val labels = listOf("S", "M", "T", "W", "T", "F", "S")
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            labels.forEachIndexed { index, label ->
+                                val day = index + 1
+                                val on = sched.daysOfWeek.contains(day)
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = if (on) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    modifier = Modifier
+                                        .clickable { toggleDay(day) }
+                                        .padding(8.dp),
+                                )
+                            }
+                        }
+                    }
                 }
                 item {
                     Text(
