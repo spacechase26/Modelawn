@@ -55,23 +55,32 @@ class ModesWidgetProvider : AppWidgetProvider() {
 
         private fun render(context: Context, manager: AppWidgetManager, id: Int, state: ModesState) {
             val views = RemoteViews(context.packageName, R.layout.modes_widget)
+
+            // Active-mode header.
+            val active = state.modes.firstOrNull { it.id == state.activeModeId }
+            views.setTextViewText(R.id.widget_active_emoji, active?.icon ?: "🎯")
+            views.setTextViewText(R.id.widget_active_name, active?.name ?: "—")
+
             views.removeAllViews(R.id.modes_container)
             state.modes.chunked(2).forEach { pair ->
                 val row = RemoteViews(context.packageName, R.layout.modes_widget_row)
                 pair.forEach { mode ->
+                    val isActive = mode.id == state.activeModeId
+                    val label = "${mode.icon}  ${mode.name}"
                     val chip = RemoteViews(context.packageName, R.layout.modes_widget_chip)
-                    chip.setTextViewText(R.id.chip, "${mode.icon}  ${mode.name}")
+                    chip.setTextViewText(R.id.chip, if (isActive) "●  $label" else label)
                     chip.setInt(
                         R.id.chip,
                         "setBackgroundResource",
-                        if (mode.id == state.activeModeId) {
-                            R.drawable.modes_widget_chip_active
-                        } else {
-                            R.drawable.modes_widget_chip
-                        },
+                        if (isActive) R.drawable.modes_widget_chip_active else R.drawable.modes_widget_chip,
                     )
                     chip.setOnClickPendingIntent(R.id.chip, switchIntent(context, mode.id))
                     row.addView(R.id.row_container, chip)
+                }
+                // Keep a lone (odd) chip half-width with a weighted spacer.
+                if (pair.size == 1) {
+                    val spacer = RemoteViews(context.packageName, R.layout.modes_widget_spacer)
+                    row.addView(R.id.row_container, spacer)
                 }
                 views.addView(R.id.modes_container, row)
             }
