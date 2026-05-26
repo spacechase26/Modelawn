@@ -2184,8 +2184,14 @@ public class Launcher extends StatefulActivity<LauncherState>
         Workspace<?> workspace = mWorkspace;
         int newItemsScreenId = -1;
         int index = 0;
+        final java.util.Set<String> modeHiddenKeys =
+                app.lawnchair.modes.ModeWorkspaceGating.hiddenComponentKeys(this);
         for (Pair<ItemInfo, View> e : shortcuts) {
             final ItemInfo item = e.first;
+            // Modes: skip icons hidden by the active mode (non-destructive workspace gating).
+            if (app.lawnchair.modes.ModeWorkspaceGating.isHidden(modeHiddenKeys, item)) {
+                continue;
+            }
 
             // Remove colliding items.
             CellPos presenterPos = getCellPosMapper().mapModelToPresenter(item);
