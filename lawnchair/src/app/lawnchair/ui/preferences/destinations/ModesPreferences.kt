@@ -193,6 +193,23 @@ fun ModesPreferences(
                     )
                 }
                 item {
+                    val grayscaleReady = remember {
+                        app.lawnchair.modes.ModeGrayscaleController(context).isAvailable()
+                    }
+                    SwitchPreference(
+                        checked = active.grayscale,
+                        onCheckedChange = { on ->
+                            scope.launch { repo.upsert(active.copy(grayscale = on)) }
+                        },
+                        label = "Grayscale screen",
+                        description = if (grayscaleReady) {
+                            "Desaturates the whole screen while this mode is active"
+                        } else {
+                            "Needs a one-time ADB grant before it works"
+                        },
+                    )
+                }
+                item {
                     val schedule = active.schedule
                     val scheduleTime = "%02d:%02d".format(schedule.hour, schedule.minute)
                     val openScheduleTimePicker: (() -> Unit)? = if (schedule.enabled) {

@@ -16,6 +16,7 @@ class ModeEngine(
     private val appList: AppListProvider = LauncherAppListProvider(context),
     private val alarmAction: ModeAlarmAction = ModeAlarmAction(context),
     private val dndController: ModeDndController = ModeDndController(context),
+    private val grayscaleController: ModeGrayscaleController = ModeGrayscaleController(context),
 ) {
     private val prefs2 = PreferenceManager2.getInstance(context)
 
@@ -27,5 +28,6 @@ class ModeEngine(
         runCatching { LauncherAppState.getInstance(context).model.forceReload() }
         if (mode.alarm.enabled) runCatching { alarmAction.set(mode.alarm) }
         mode.dnd?.let { if (dndController.hasAccess()) dndController.setEnabled(it) }
+        grayscaleController.setEnabled(mode.grayscale)
     }
 }

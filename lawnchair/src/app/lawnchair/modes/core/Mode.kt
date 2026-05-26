@@ -36,6 +36,7 @@ data class Mode(
     val allowAll: Boolean = false,
     val alarm: ModeAlarm = ModeAlarm(),
     val dnd: Boolean? = null,
+    val grayscale: Boolean = false,
     val schedule: ModeSchedule = ModeSchedule(),
 )
 
