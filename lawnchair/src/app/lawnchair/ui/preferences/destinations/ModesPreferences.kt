@@ -16,33 +16,49 @@
 
 package app.lawnchair.ui.preferences.destinations
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.lawnchair.modes.ModeProvider
 import app.lawnchair.modes.core.Mode
 import app.lawnchair.ui.preferences.LocalIsExpandedScreen
 import app.lawnchair.ui.preferences.components.AppItem
-import app.lawnchair.ui.preferences.components.controls.SwitchPreference
 import app.lawnchair.ui.preferences.components.layout.PreferenceLazyColumn
 import app.lawnchair.ui.preferences.components.layout.PreferenceScaffold
 import app.lawnchair.ui.preferences.components.layout.preferenceGroupItems
 import app.lawnchair.util.appComparator
 import app.lawnchair.util.appsState
+import java.util.UUID
 import kotlinx.coroutines.launch
 
-private const val FOCUS_ID = "focus"
 private const val DEFAULT_ID = "default"
 
 /**
- * v1 Modes screen: a single "Focus" mode plus a Default (all-apps) mode.
- * Toggle Focus on -> the drawer shows only the checked apps (strict gating).
+ * Multiple named modes. Tap a mode to activate it (and edit it below); "Off" = all apps.
+ * The active non-default mode gates the drawer + home screen to its checked apps.
  */
 @Composable
 fun ModesPreferences(
@@ -56,17 +72,12 @@ fun ModesPreferences(
 
     LaunchedEffect(Unit) {
         if (state.modes.none { it.id == DEFAULT_ID }) {
-            repo.upsert(Mode(id = DEFAULT_ID, name = "Default", icon = "🏠", allowAll = true))
-        }
-        if (state.modes.none { it.id == FOCUS_ID }) {
-            repo.upsert(Mode(id = FOCUS_ID, name = "Focus", icon = "🎯"))
+            repo.upsert(Mode(id = DEFAULT_ID, name = "Off (all apps)", icon = "🏠", allowAll = true))
         }
         if (state.activeModeId == null) repo.activate(DEFAULT_ID)
     }
 
-    val focus = state.modes.firstOrNull { it.id == FOCUS_ID }
-    val allowed = focus?.allowedApps ?: emptySet()
-    val focusActive = state.activeModeId == FOCUS_ID
+    val active = state.modes.firstOrNull { it.id == state.activeModeId }
 
     PreferenceScaffold(
         label = "Modes",
@@ -74,42 +85,123 @@ fun ModesPreferences(
         modifier = modifier,
     ) {
         PreferenceLazyColumn(it) {
-            item {
-                SwitchPreference(
-                    checked = focusActive,
-                    onCheckedChange = { on ->
-                        scope.launch { repo.activate(if (on) FOCUS_ID else DEFAULT_ID) }
-                    },
-                    label = "Focus mode",
-                    description = "When on, the drawer shows only the apps checked below",
+            items(state.modes, key = { mode -> mode.id }) { mode ->
+                ModeRow(
+                    title = "${mode.icon}  ${mode.name}",
+                    selected = mode.id == state.activeModeId,
+                    onClick = { scope.launch { repo.activate(mode.id) } },
                 )
             }
-            preferenceGroupItems(
-                items = apps,
-                isFirstChild = true,
-            ) { _, app ->
-                val key = app.key.toString()
-                AppItem(
-                    app = app,
+            item {
+                ModeRow(
+                    title = "➕  Add mode",
+                    selected = false,
                     onClick = {
-                        val current = state.modes.firstOrNull { mode -> mode.id == FOCUS_ID }
-                        if (current != null) {
-                            val newAllowed = current.allowedApps.toMutableSet().apply {
-                                if (contains(key)) remove(key) else add(key)
-                            }
-                            scope.launch {
-                                repo.upsert(current.copy(allowedApps = newAllowed))
-                                if (state.activeModeId == FOCUS_ID) repo.activate(FOCUS_ID)
-                            }
+                        val id = UUID.randomUUID().toString()
+                        scope.launch {
+                            repo.upsert(Mode(id = id, name = "New mode"))
+                            repo.activate(id)
                         }
                     },
-                ) {
-                    Checkbox(
-                        checked = allowed.contains(key),
-                        onCheckedChange = null,
+                    showRadio = false,
+                )
+            }
+
+            if (active != null && !active.allowAll) {
+                item {
+                    key(active.id) {
+                        var name by remember { mutableStateOf(active.name) }
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { newName ->
+                                name = newName
+                                scope.launch { repo.upsert(active.copy(name = newName)) }
+                            },
+                            label = { Text("Mode name") },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+                item {
+                    Text(
+                        text = "Apps allowed in this mode",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
+                    )
+                }
+                preferenceGroupItems(
+                    items = apps,
+                    isFirstChild = true,
+                ) { _, app ->
+                    val appKey = app.key.toString()
+                    AppItem(
+                        app = app,
+                        onClick = {
+                            val current = state.modes.firstOrNull { it.id == active.id }
+                            if (current != null) {
+                                val newAllowed = current.allowedApps.toMutableSet().apply {
+                                    if (contains(appKey)) remove(appKey) else add(appKey)
+                                }
+                                scope.launch {
+                                    repo.upsert(current.copy(allowedApps = newAllowed))
+                                    if (state.activeModeId == current.id) repo.activate(current.id)
+                                }
+                            }
+                        },
+                    ) {
+                        Checkbox(
+                            checked = active.allowedApps.contains(appKey),
+                            onCheckedChange = null,
+                        )
+                    }
+                }
+                item {
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                repo.delete(active.id)
+                                repo.activate(DEFAULT_ID)
+                            }
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                    ) {
+                        Text("Delete this mode")
+                    }
+                }
+            } else {
+                item {
+                    Text(
+                        text = "“Off” shows all apps. Tap a mode above, or add one, to gate which apps appear.",
+                        modifier = Modifier.padding(16.dp),
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ModeRow(
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    showRadio: Boolean = true,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (showRadio) {
+            RadioButton(selected = selected, onClick = null)
+            Spacer(Modifier.width(12.dp))
+        }
+        Text(text = title, style = MaterialTheme.typography.bodyLarge)
     }
 }
