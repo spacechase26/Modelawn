@@ -27,7 +27,9 @@ class ModeEngine(
         // re-bind so placed home-screen icons are gated too (see ModeWorkspaceGating).
         runCatching { LauncherAppState.getInstance(context).model.forceReload() }
         if (mode.alarm.enabled) runCatching { alarmAction.set(mode.alarm) }
-        mode.dnd?.let { if (dndController.hasAccess()) dndController.setEnabled(it) }
+        // Always enforce the mode's DND state: a mode that doesn't enable DND (null/false) turns
+        // it off, so switching to Off (or any non-DND mode) clears it instead of leaving it on.
+        if (dndController.hasAccess()) dndController.setEnabled(mode.dnd == true)
         grayscaleController.setEnabled(mode.grayscale)
     }
 }

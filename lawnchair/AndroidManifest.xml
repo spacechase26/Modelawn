@@ -42,6 +42,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <!-- Exact mode auto-activate/deactivate alarms: USE_EXACT_ALARM auto-grants on API 33+; on
+         API 31-32 SCHEDULE_EXACT_ALARM is auto-granted. Keeps scheduling on-time, not batched. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
 
     <!--override minSdk declared in it-->

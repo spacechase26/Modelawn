@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import app.lawnchair.modes.core.ModeSchedule
 import app.lawnchair.modes.core.ModesState
 import app.lawnchair.modes.core.OFF_MODE_ID
@@ -39,8 +40,16 @@ class ModeScheduler(private val context: Context) {
     private fun arm(key: String, at: Long?, targetModeId: String) {
         val pi = pendingIntent(key, targetModeId)
         am.cancel(pi)
-        if (at != null) {
-            runCatching { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi) }
+        if (at == null) return
+        // Fire on time. Use an exact, doze-friendly alarm when allowed (the USE_EXACT_ALARM
+        // permission auto-grants this on API 33+), otherwise fall back to an inexact one.
+        val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
+        runCatching {
+            if (canExact) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+            } else {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+            }
         }
     }
 
