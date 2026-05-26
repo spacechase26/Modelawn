@@ -46,6 +46,7 @@ import app.lawnchair.modes.ModeProvider
 import app.lawnchair.modes.core.Mode
 import app.lawnchair.ui.preferences.LocalIsExpandedScreen
 import app.lawnchair.ui.preferences.components.AppItem
+import app.lawnchair.ui.preferences.components.controls.SwitchPreference
 import app.lawnchair.ui.preferences.components.layout.PreferenceLazyColumn
 import app.lawnchair.ui.preferences.components.layout.PreferenceScaffold
 import app.lawnchair.ui.preferences.components.layout.preferenceGroupItems
@@ -124,6 +125,51 @@ fun ModesPreferences(
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                         )
                     }
+                }
+                item {
+                    val alarmTime = "Alarm at %02d:%02d".format(active.alarm.hour, active.alarm.minute)
+                    val openTimePicker: (() -> Unit)? = if (active.alarm.enabled) {
+                        {
+                            android.app.TimePickerDialog(
+                                context,
+                                { _, h, m ->
+                                    scope.launch {
+                                        repo.upsert(active.copy(alarm = active.alarm.copy(hour = h, minute = m)))
+                                    }
+                                },
+                                active.alarm.hour,
+                                active.alarm.minute,
+                                true,
+                            ).show()
+                        }
+                    } else {
+                        null
+                    }
+                    SwitchPreference(
+                        checked = active.alarm.enabled,
+                        onCheckedChange = { on ->
+                            scope.launch { repo.upsert(active.copy(alarm = active.alarm.copy(enabled = on))) }
+                        },
+                        label = "Set alarm when activated",
+                        description = if (active.alarm.enabled) "$alarmTime — tap to change" else null,
+                        onClick = openTimePicker,
+                    )
+                }
+                item {
+                    SwitchPreference(
+                        checked = active.dnd == true,
+                        onCheckedChange = { on ->
+                            scope.launch { repo.upsert(active.copy(dnd = if (on) true else null)) }
+                            if (on) {
+                                val dnd = app.lawnchair.modes.ModeDndController(context)
+                                if (!dnd.hasAccess()) {
+                                    context.startActivity(dnd.requestAccessIntent())
+                                }
+                            }
+                        },
+                        label = "Turn on Do Not Disturb",
+                        description = "Silences notifications while active (needs permission once)",
+                    )
                 }
                 item {
                     Text(
