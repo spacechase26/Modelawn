@@ -16,6 +16,6 @@ class ModeAlarmAction(private val context: Context) {
             putExtra(AlarmClock.EXTRA_SKIP_UI, true)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        runCatching { context.startActivity(intent) }
+        context.startActivity(intent)
     }
 }
