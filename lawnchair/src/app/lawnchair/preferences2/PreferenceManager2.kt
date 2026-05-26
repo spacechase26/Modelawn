@@ -307,6 +307,12 @@ class PreferenceManager2 @Inject constructor(
         onSet = { reloadHelper.reloadGrid() },
     )
 
+    // Modes feature: persisted ModesState as JSON (see app.lawnchair.modes).
+    val modesJson = preference(
+        key = stringPreferencesKey(name = "modes_state_json"),
+        defaultValue = "{}",
+    )
+
     val roundedWidgets = preference(
         key = booleanPreferencesKey(name = "rounded_widgets"),
         defaultValue = context.resources.getBoolean(R.bool.config_default_rounded_widgets),
