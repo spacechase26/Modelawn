@@ -12,9 +12,8 @@ class ModeDndController(private val context: Context) {
     fun hasAccess(): Boolean = nm.isNotificationPolicyAccessGranted
 
     /** Intent to the system screen where the user grants DND access (one-time). */
-    fun requestAccessIntent(): Intent =
-        Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    fun requestAccessIntent(): Intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     fun setEnabled(enabled: Boolean) {
         if (!hasAccess()) return
