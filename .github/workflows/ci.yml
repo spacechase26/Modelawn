@@ -29,8 +29,9 @@ on:
 jobs:
   build-debug-apk:
     strategy:
+      fail-fast: false
       matrix:
-        build-variant: [ assembleLawnWithQuickstepGithubDebug ]
+        build-variant: [ assembleLawnWithQuickstepGithubDebug, assembleLawnWithQuickstepGithubRelease ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
