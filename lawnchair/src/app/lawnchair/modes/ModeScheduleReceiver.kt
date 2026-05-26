@@ -18,7 +18,6 @@ class ModeScheduleReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(Dispatchers.Default).launch {
             try {
-                ModeDebug.toast(appContext, "Auto-trigger: ${intent.action} ${modeId ?: ""}")
                 val repo = ModeProvider.repository(appContext)
                 if (intent.action == ACTION_ACTIVATE && modeId != null) {
                     repo.activate(modeId)

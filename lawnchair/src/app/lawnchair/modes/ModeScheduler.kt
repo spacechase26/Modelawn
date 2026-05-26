@@ -22,7 +22,6 @@ class ModeScheduler(private val context: Context) {
             am.cancel(pi)
             val at = nextTriggerMillis(mode.schedule, now, ZoneId.systemDefault()) ?: return@forEach
             runCatching { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi) }
-            ModeDebug.toast(context, "Armed ${mode.name} in ${(at - now) / 1000}s")
         }
     }
 
