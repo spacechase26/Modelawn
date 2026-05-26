@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.lawnchair.modes.ModeProvider
 import app.lawnchair.modes.core.Mode
+import app.lawnchair.modes.core.OFF_MODE_ID
 import app.lawnchair.ui.preferences.LocalIsExpandedScreen
 import app.lawnchair.ui.preferences.components.AppItem
 import app.lawnchair.ui.preferences.components.controls.SwitchPreference
@@ -58,7 +59,7 @@ import app.lawnchair.util.appsState
 import java.util.UUID
 import kotlinx.coroutines.launch
 
-private const val DEFAULT_ID = "default"
+private const val DEFAULT_ID = OFF_MODE_ID
 
 /**
  * Multiple named modes. Tap a mode to activate it (and edit it below); "Off" = all apps.
@@ -75,8 +76,11 @@ fun ModesPreferences(
     val apps by appsState(comparator = appComparator)
 
     LaunchedEffect(Unit) {
-        if (state.modes.none { it.id == DEFAULT_ID }) {
-            repo.upsert(Mode(id = DEFAULT_ID, name = "Off (all apps)", icon = "🏠", allowAll = true))
+        val off = state.modes.firstOrNull { it.id == DEFAULT_ID }
+        if (off == null) {
+            repo.upsert(Mode(id = DEFAULT_ID, name = "Off", icon = "🏠", allowAll = true))
+        } else if (off.name != "Off") {
+            repo.upsert(off.copy(name = "Off"))
         }
         if (state.activeModeId == null) repo.activate(DEFAULT_ID)
     }

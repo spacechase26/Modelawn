@@ -2,6 +2,9 @@ package app.lawnchair.modes.core
 
 import kotlinx.serialization.Serializable
 
+/** Id of the built-in "Off" mode (no gating). */
+const val OFF_MODE_ID = "default"
+
 /** A wake alarm a mode sets on activation. */
 @Serializable
 data class ModeAlarm(

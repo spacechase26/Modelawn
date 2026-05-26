@@ -98,6 +98,11 @@ data object About : PreferenceRootRoute, PreferenceDeepLink {
 }
 
 @Serializable
+data object Modes : PreferenceRootRoute, PreferenceDeepLink {
+    override val deepLink = "$URI/modes"
+}
+
+@Serializable
 data object ExperimentalFeatures : PreferenceRootRoute, PreferenceDeepLink {
     override val deepLink = "$URI/experimental-features"
 }
@@ -149,9 +154,6 @@ data object DockSearchProvider : PreferenceRoute, PreferenceDeepLink {
 data object AppDrawerHiddenApps : PreferenceRoute, PreferenceDeepLink {
     override val deepLink = "$URI/app-drawer-hidden-apps"
 }
-
-@Serializable
-data object AppDrawerModes : PreferenceRoute
 
 @Serializable
 data object AppDrawerFolder : PreferenceRoute, PreferenceDeepLink {

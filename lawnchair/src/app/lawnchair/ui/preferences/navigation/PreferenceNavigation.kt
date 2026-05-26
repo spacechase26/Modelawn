@@ -156,7 +156,9 @@ fun PreferenceNavigation(
         composable<AppDrawerHiddenApps>(
             deepLinks = getDeepLink(AppDrawerHiddenApps),
         ) { HiddenAppsPreferences() }
-        composable<AppDrawerModes> { ModesPreferences() }
+        composable<Modes>(
+            deepLinks = getDeepLink(Modes),
+        ) { ModesPreferences() }
         composable<AppDrawerAppListToFolder> { backStackEntry ->
             val args = backStackEntry.arguments!!
             val folderInfoId = args.getInt("id")

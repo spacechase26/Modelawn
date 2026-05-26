@@ -190,6 +190,8 @@
 
     <string name="gestures_label">Gestures</string>
     <string name="gestures_description">Taps and swipes</string>
+    <string name="modes_label">Modes</string>
+    <string name="modes_description">App gating, routines, switcher</string>
 
     <string name="quickstep_label">Recents screen</string>
     <string name="quickstep_description">Clear All button, corner radius</string>

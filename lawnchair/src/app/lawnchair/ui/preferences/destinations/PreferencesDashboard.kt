@@ -67,6 +67,7 @@ import app.lawnchair.ui.preferences.navigation.Folders
 import app.lawnchair.ui.preferences.navigation.General
 import app.lawnchair.ui.preferences.navigation.Gestures
 import app.lawnchair.ui.preferences.navigation.HomeScreen
+import app.lawnchair.ui.preferences.navigation.Modes
 import app.lawnchair.ui.preferences.navigation.PreferenceRootRoute
 import app.lawnchair.ui.preferences.navigation.Quickstep
 import app.lawnchair.ui.preferences.navigation.Search
@@ -211,6 +212,17 @@ fun PreferencesDashboard(
                     iconResource = R.drawable.ic_gestures,
                     onNavigate = { onNavigate(Gestures) },
                     isSelected = currentRoute is Gestures,
+                    isFirst = it.isFirst,
+                    isLast = it.isLast,
+                )
+            }
+            Item {
+                PreferenceCategory(
+                    label = stringResource(R.string.modes_label),
+                    description = stringResource(R.string.modes_description),
+                    iconResource = R.drawable.ic_lightbulb,
+                    onNavigate = { onNavigate(Modes) },
+                    isSelected = currentRoute is Modes,
                     isFirst = it.isFirst,
                     isLast = it.isLast,
                 )
