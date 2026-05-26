@@ -15,13 +15,11 @@ object ModeProvider {
     @Volatile
     private var sched: ModeScheduler? = null
 
-    fun repository(context: Context): ModeRepository =
-        repo ?: synchronized(this) { repo ?: build(context.applicationContext) }
+    fun repository(context: Context): ModeRepository = repo ?: synchronized(this) { repo ?: build(context.applicationContext) }
 
-    fun scheduler(context: Context): ModeScheduler =
-        sched ?: synchronized(this) {
-            sched ?: ModeScheduler(context.applicationContext).also { sched = it }
-        }
+    fun scheduler(context: Context): ModeScheduler = sched ?: synchronized(this) {
+        sched ?: ModeScheduler(context.applicationContext).also { sched = it }
+    }
 
     private fun build(appContext: Context): ModeRepository {
         val engine = ModeEngine(appContext)
