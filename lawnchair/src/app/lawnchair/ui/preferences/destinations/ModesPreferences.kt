@@ -172,6 +172,40 @@ fun ModesPreferences(
                     )
                 }
                 item {
+                    val schedule = active.schedule
+                    val scheduleTime = "%02d:%02d".format(schedule.hour, schedule.minute)
+                    val openScheduleTimePicker: (() -> Unit)? = if (schedule.enabled) {
+                        {
+                            android.app.TimePickerDialog(
+                                context,
+                                { _, h, m ->
+                                    scope.launch {
+                                        repo.upsert(active.copy(schedule = schedule.copy(hour = h, minute = m)))
+                                        ModeProvider.scheduler(context).reschedule(repo.currentState())
+                                    }
+                                },
+                                schedule.hour,
+                                schedule.minute,
+                                true,
+                            ).show()
+                        }
+                    } else {
+                        null
+                    }
+                    SwitchPreference(
+                        checked = schedule.enabled,
+                        onCheckedChange = { on ->
+                            scope.launch {
+                                repo.upsert(active.copy(schedule = schedule.copy(enabled = on)))
+                                ModeProvider.scheduler(context).reschedule(repo.currentState())
+                            }
+                        },
+                        label = "Auto-activate daily",
+                        description = if (schedule.enabled) "Every day at $scheduleTime — tap to change" else null,
+                        onClick = openScheduleTimePicker,
+                    )
+                }
+                item {
                     Text(
                         text = "Apps allowed in this mode",
                         style = MaterialTheme.typography.titleSmall,
