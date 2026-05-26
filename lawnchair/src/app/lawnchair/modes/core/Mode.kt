@@ -41,6 +41,9 @@ data class Mode(
     val dnd: Boolean? = null,
     val grayscale: Boolean = false,
     val schedule: ModeSchedule = ModeSchedule(),
+    val autoOffEnabled: Boolean = false,
+    val autoOffHour: Int = 22,
+    val autoOffMinute: Int = 0,
 )
 
 @Serializable

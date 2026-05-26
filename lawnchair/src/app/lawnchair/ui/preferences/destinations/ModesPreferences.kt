@@ -242,12 +242,45 @@ fun ModesPreferences(
                                 ModeProvider.scheduler(context).reschedule(repo.currentState())
                             }
                         },
-                        label = "Auto-activate on schedule",
+                        label = "Auto-activate",
                         description = if (schedule.enabled) "$scheduleTime on selected days — tap for time" else null,
                         onClick = openScheduleTimePicker,
                     )
                 }
-                if (active.schedule.enabled) {
+                item {
+                    val autoOffTime = "%02d:%02d".format(active.autoOffHour, active.autoOffMinute)
+                    val openAutoOffTimePicker: (() -> Unit)? = if (active.autoOffEnabled) {
+                        {
+                            android.app.TimePickerDialog(
+                                context,
+                                { _, h, m ->
+                                    scope.launch {
+                                        repo.upsert(active.copy(autoOffHour = h, autoOffMinute = m))
+                                        ModeProvider.scheduler(context).reschedule(repo.currentState())
+                                    }
+                                },
+                                active.autoOffHour,
+                                active.autoOffMinute,
+                                true,
+                            ).show()
+                        }
+                    } else {
+                        null
+                    }
+                    SwitchPreference(
+                        checked = active.autoOffEnabled,
+                        onCheckedChange = { on ->
+                            scope.launch {
+                                repo.upsert(active.copy(autoOffEnabled = on))
+                                ModeProvider.scheduler(context).reschedule(repo.currentState())
+                            }
+                        },
+                        label = "Auto-deactivate (to Off)",
+                        description = if (active.autoOffEnabled) "$autoOffTime on selected days — tap for time" else null,
+                        onClick = openAutoOffTimePicker,
+                    )
+                }
+                if (active.schedule.enabled || active.autoOffEnabled) {
                     item {
                         val sched = active.schedule
                         val toggleDay: (Int) -> Unit = { day ->
