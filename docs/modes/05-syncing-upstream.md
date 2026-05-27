@@ -1,138 +1,250 @@
-# Syncing a new upstream Lawnchair release into Modelawn
+# Updating to a newer Lawnchair (beginner-friendly guide)
 
-> When official Lawnchair ships a new version you want (a bug-fix wave, or a new major like
-> `17-dev`), this is how you pull it into your fork **without losing the Modes feature**.
-> Written for the owner (vibe-coding) and for a future AI doing the merge.
-
-## The mental model (read this once)
-
-- `origin` = **upstream** Lawnchair (`LawnchairLauncher/lawnchair`). You never push here.
-- `fork` = **your** repo (`spacechase26/Modelawn`). You push here.
-- The Modes feature lives on branch **`modes-dev`**, which was branched off upstream's
-  development branch (currently **`16-dev`**).
-- Almost all of Modes is **new files** in a self-contained `modes` package; only ~11 existing
-  files carry a small `// Modes:` hook (listed in [`02-changed-files.md`](./02-changed-files.md)
-  §B). **Those ~11 files are the only places that can conflict** during a sync.
-
-> **CI naming rule (important):** CI only builds branches whose name **ends in `-dev`**
-> (`.github/workflows/ci.yml` triggers on `'*-dev'`). Whatever branch you sync onto must end
-> in `-dev`, or you'll get no APK.
-
-## Before you start
-
-```bash
-cd /home/coder/lawnchair-modes/launcher
-git status                       # make sure your work is committed
-git push fork modes-dev          # back it up to the fork first
-git fetch origin                 # pull the latest upstream refs
-git branch -r | grep origin      # see what upstream branches exist (e.g. origin/16-dev, origin/17-dev)
-```
-
-If upstream bumped the `platform_frameworks_libs_systemui` submodule, refresh it too:
-```bash
-git submodule update --init
-```
+> Official Lawnchair released a new version you want, and you'd like your **Modes** feature to
+> ride on top of it. This guide walks you through it **from scratch** — no Git expertise assumed,
+> and **no special computer required**. You can do this from any laptop with Git installed; the
+> actual app build happens on GitHub's servers, not on your machine.
 
 ---
 
-## Case A — minor update on the SAME major (e.g. more commits on `16-dev`)
+## First, the calm version of what's going on
 
-You're still on `16-dev`; you just want upstream's latest fixes.
+You have **two copies** of the Lawnchair code online:
 
-```bash
-git checkout modes-dev
-git merge origin/16-dev          # brings upstream changes under your feature
-# ...resolve any conflicts (see "Resolving conflicts" below)...
-```
+- **Lawnchair's original** — `github.com/LawnchairLauncher/lawnchair`. You only ever *read* from it.
+- **Your fork** — `github.com/spacechase26/Modelawn`. This is yours; it has the original code
+  **plus** your Modes feature. You push your work here.
 
-Then **build & verify** (see that section), commit, `git push fork modes-dev`.
+"Updating to a newer Lawnchair" just means: **take Lawnchair's new code and re-apply your Modes
+changes on top of it.** The good news — your Modes feature is almost entirely in its own folder
+(`modes/`), so it barely collides with Lawnchair's code. Only about **11 files** are shared, and
+every shared spot is marked with a `// Modes:` comment so you can find it instantly.
 
----
+### A 2-minute vocabulary (everything you need)
 
-## Case B — new MAJOR (e.g. upstream moves to `17-dev`)
+| Word | What it means, plainly |
+|---|---|
+| **repo** | A project folder tracked by Git (your code + its history). |
+| **clone** | Download a repo onto your computer. |
+| **remote** | A nickname for an online copy of the repo. You'll have two: one for *your* fork, one for *Lawnchair's original*. |
+| **branch** | A separate line of work. Your feature lives on the branch **`modes-dev`**. |
+| **commit** | A saved snapshot of changes, with a message. |
+| **fetch** | Download the latest code from a remote (without changing your files yet). |
+| **merge** | Combine another branch's changes into yours. |
+| **conflict** | When the same lines were edited in both places and Git needs *you* to choose. (We'll handle this — it's not scary.) |
+| **push** | Upload your commits to GitHub. |
+| **tag** | A name pinned to a snapshot, like `v1.1.0`, marking a release. |
+| **CI** | GitHub's robot that builds the app for you when you push. |
 
-Make a fresh branch off the new upstream base and bring Modes onto it. **Merge** (not rebase)
-is recommended — conflicts are easier to reason about and you keep history.
-
-```bash
-# New branch off the new upstream major. MUST end in -dev so CI builds it.
-git checkout -b modes-17-dev origin/17-dev
-
-# Bring the whole Modes feature in:
-git merge modes-dev
-# ...resolve conflicts (only in the ~11 hook files; the modes/ package rarely conflicts)...
-
-git push fork modes-17-dev       # CI builds it (name ends in -dev)
-```
-
-`modes-17-dev` is now your new mainline. Keep the old `modes-dev` around until the new one is
-verified, then you can retire it.
-
-> Prefer `merge` over `rebase` here. A rebase replays each of your commits onto the new base
-> and makes you resolve conflicts repeatedly, commit-by-commit — painful across a major jump.
+> **You never build the app on your own computer.** Lawnchair is huge. You push your code to
+> GitHub, GitHub's CI builds the APK, and you download it. So all you need locally is Git.
 
 ---
 
-## Resolving conflicts (where they'll be)
+## Step 0 — One-time setup on a new computer
 
-Conflicts only happen in the files upstream also edited. For Modes those are the integration
-touchpoints from [`02-changed-files.md`](./02-changed-files.md) §B — most likely:
+Skip this if you already have the project on the machine you're using (just run `git remote -v`
+to check your remote names — see the note in Step 2).
 
-- `src/com/android/launcher3/Launcher.java` — the `bindInflatedItems` workspace-gating hook.
-- `src/com/android/launcher3/folder/Folder.java` — `animateOpen` + `shouldAnimateOpen`.
-- `src/com/android/launcher3/folder/FolderIcon.java` — `getPreviewItemsOnPage`.
-- The gesture-config trio + preference navigation/dashboard files.
-- `lawnchair/AndroidManifest.xml`, `lawnchair/res/values/strings.xml`.
-- `.github/workflows/ci.yml` — **keep your version** (the matrix that builds Debug + Release);
-  re-add only genuinely new upstream steps.
+1. **Install Git** if you don't have it ([git-scm.com](https://git-scm.com/downloads)), and make
+   sure you can log in to GitHub from the command line (SSH key or `gh auth login`).
 
-**The trick:** every hook is tagged with a `// Modes:` comment. For each conflict, take
-*upstream's* new version of the file and re-insert the `// Modes:` block. To find them all:
-
-```bash
-git grep -n "// Modes:"          # lists every integration hook by file + line
-```
-
-If a conflicted file is one of *our* new files (anything under `modes/`, `ModesPreferences`,
-the widget/gesture, the `modes_*` resources), just keep our version — upstream doesn't have it.
-
----
-
-## Build & verify after a sync
-
-```bash
-# 1. The integration points still exist (4 workspace/folder bind points + the prefs/gesture/manifest):
-git grep -n "ModeWorkspaceGating"        # expect hits in Launcher.java, Folder.java, FolderIcon.java
-git grep -n "modesJson"                  # PreferenceManager2 still has the pref
-git grep -n "OpenModeSwitcher"           # gesture still registered
-
-# 2. Pure logic still passes (fast, local — no device needed):
-JAVA_HOME=/home/coder/java21 ./gradlew -p /home/coder/lawnchair-modes/logic-test test
-
-# 3. Format + spotless sanity on anything you touched:
-JAVA_HOME=/home/coder/java21 /home/coder/bin/ktlint --format <changed .kt files>
-grep -nE " = *$" <changed .kt files>     # the spotless single-expr trap (see 03-ai-handoff.md)
-
-# 4. Push to the *-dev branch → CI builds → install the APK artifact → test on device.
-```
-
-**Watch for:** upstream may have **renamed or removed APIs** the Modes code calls
-(`PreferenceManager2`, `ColorOption`/`ThemeProvider` for the wallpaper feature, `LauncherModel`,
-the gesture-handler base class, Compose preference components). The local logic-test won't catch
-these — only the CI compile will. Read the failing CI job's log and fix the call sites.
-
----
-
-## After it's green and verified
-
-1. Update the doc references to the new base: the diff base in
-   [`02-changed-files.md`](./02-changed-files.md) (`origin/16-dev` → `origin/17-dev`) and the
-   branch names in [`03-ai-handoff.md`](./03-ai-handoff.md).
-2. Tag the release at the new branch's HEAD:
+2. **Download your fork** (the `--recurse-submodules` part matters — Lawnchair pulls in another
+   sub-project):
    ```bash
-   git tag -a v1.2.0 -m "Modes on Lawnchair 17"
-   git push fork v1.2.0
+   git clone --recurse-submodules git@github.com:spacechase26/Modelawn.git
+   cd Modelawn
    ```
-3. (Optional) Point the fork's default branch at the new branch, and delete the stale one.
 
-That's it — your Modes feature now rides the new Lawnchair version.
+3. **Add Lawnchair's original as a second remote**, named `upstream` (the usual name for "the
+   project I forked from"):
+   ```bash
+   git remote add upstream https://github.com/LawnchairLauncher/lawnchair.git
+   ```
+
+4. **Check your remotes** so you know their names:
+   ```bash
+   git remote -v
+   ```
+   You want to see two: `origin` → your `Modelawn`, and `upstream` → `LawnchairLauncher/lawnchair`.
+
+> ⚠️ **Names can differ!** On the temporary VPS this was set up the *other* way around: there
+> `origin` = Lawnchair and `fork` = your Modelawn. **Always run `git remote -v` first** and use
+> whatever names *you* see. In this guide: **`upstream`** = Lawnchair's original, **`origin`** =
+> your Modelawn. Swap the names if yours are different.
+
+---
+
+## Step 1 — Save your current work first (always)
+
+Make sure nothing is half-finished, and back up your branch to GitHub before you start:
+
+```bash
+git status            # should say "nothing to commit, working tree clean"
+git checkout modes-dev
+git push origin modes-dev
+```
+
+If `git status` shows changes you care about, commit them first:
+```bash
+git add -A
+git commit -m "wip: save before updating Lawnchair"
+git push origin modes-dev
+```
+
+---
+
+## Step 2 — Get Lawnchair's latest code
+
+This downloads the new code but doesn't touch your files yet:
+
+```bash
+git fetch upstream
+git submodule update --init        # in case Lawnchair bumped its sub-project
+```
+
+See which versions Lawnchair has:
+```bash
+git branch -r | grep upstream
+```
+You'll see things like `upstream/16-dev`, maybe `upstream/17-dev`. Lawnchair develops on a branch
+named after the Android version (e.g. `16-dev`). **The newer number is the new version.**
+
+---
+
+## Step 3 — Bring your Modes feature onto the new version
+
+> **One rule that bites people:** GitHub's CI only builds branches whose name **ends in `-dev`**.
+> If your branch doesn't end in `-dev`, you'll get no APK. So name it e.g. `modes-17-dev`.
+
+Say the new version is `17-dev`. Create a fresh branch from Lawnchair's new code, then merge your
+feature into it:
+
+```bash
+# Make a new branch that starts as an exact copy of Lawnchair 17:
+git checkout -b modes-17-dev upstream/17-dev
+
+# Pour your Modes feature on top:
+git merge modes-dev
+```
+
+One of two things happens:
+
+- **"Merge made by the 'recursive' strategy" / no conflicts** 🎉 → skip to Step 5.
+- **"CONFLICT (content): ..."** → Git needs your help on a few files. Go to Step 4. Don't panic.
+
+> Just want the latest fixes on the **same** version (still `16-dev`, no new number)? It's the
+> same idea, simpler: `git checkout modes-dev` then `git merge upstream/16-dev`.
+
+---
+
+## Step 4 — Fixing conflicts (gently)
+
+A conflict just means Lawnchair *and* you both edited the same lines, and Git won't guess. List
+the files that need attention:
+
+```bash
+git status        # the files under "Unmerged paths" are the ones to fix
+```
+
+Open each one. Git inserts markers that look like this:
+
+```
+<<<<<<< HEAD
+   ...Lawnchair's new version of these lines...
+=======
+   ...your version of these lines...
+>>>>>>> modes-dev
+```
+
+Your job: edit that section so it has the **correct final code**, then delete the three marker
+lines (`<<<<<<<`, `=======`, `>>>>>>>`).
+
+**The shortcut that makes this easy:** every place your Modes feature touches Lawnchair's code is
+labelled. Find them all with:
+
+```bash
+git grep -n "// Modes:"
+```
+
+So for a conflict, the recipe is almost always: **keep Lawnchair's new version, then paste your
+`// Modes:` block back in.** The list of exactly which files have these hooks and what each hook
+does is in [`02-changed-files.md`](./02-changed-files.md) (section B). They're mostly:
+`Launcher.java`, `Folder.java`, `FolderIcon.java`, a few gesture/preference files, the Android
+manifest, and `strings.xml`. (For `.github/workflows/ci.yml`, keep **your** version.)
+
+If a conflicted file is one of *your own* new files (anything in the `modes/` folder, the widget,
+the settings screen), just keep your version — Lawnchair doesn't have it.
+
+After fixing each file, tell Git it's resolved:
+```bash
+git add <the-file-you-fixed>
+```
+When all are added:
+```bash
+git commit          # finishes the merge (a default message is fine — just save & close)
+```
+
+> **Stuck or it looks like a lot?** This is the one genuinely technical step. You don't have to do
+> it alone — hand the job to an AI assistant (like me) and point it at this folder's
+> [`03-ai-handoff.md`](./03-ai-handoff.md) and [`02-changed-files.md`](./02-changed-files.md). To
+> abandon a messy merge and start over, run `git merge --abort` — it puts everything back exactly
+> as it was. Nothing is lost.
+
+---
+
+## Step 5 — Let GitHub build it, then test
+
+Push your new branch. Because its name ends in `-dev`, GitHub's robot builds an APK automatically:
+
+```bash
+git push origin modes-17-dev
+```
+
+Then, **in your web browser**:
+1. Go to your repo → the **Actions** tab → click the latest **CI** run.
+2. Wait for the green check (≈10–15 min). If it's **red**, open the failed job and read the
+   error — usually Lawnchair renamed something your code uses; fix that line, commit, push again.
+3. Scroll to **Artifacts** at the bottom → download
+   **`assembleLawnWithQuickstepGithubRelease`** (that's the optimized app).
+4. Unzip it, put the `.apk` on your phone, and install. Check that switching modes, gating, and
+   wallpapers all still work.
+
+> A quick sanity check you *can* run from the command line (optional, only if you have a dev
+> setup): the pure logic tests. On the VPS that was
+> `JAVA_HOME=/home/coder/java21 ./gradlew -p /home/coder/lawnchair-modes/logic-test test`. It
+> doesn't need a phone or the full build. Skip it if you're not set up for it — CI is the real check.
+
+---
+
+## Step 6 — Make it official
+
+Once it's green and works on your phone, this new branch is your new home base. Mark the release:
+
+```bash
+git tag -a v1.2.0 -m "Modes on Lawnchair 17"
+git push origin v1.2.0
+```
+
+(Optional, on the GitHub website: Settings → Branches → set `modes-17-dev` as the default branch,
+and delete the old `modes-dev` once you're happy.)
+
+That's the whole thing. Your Modes feature now runs on the new Lawnchair. 🎉
+
+---
+
+## Cheat sheet (once you've done it once)
+
+```bash
+git remote -v                                   # what are my remote names?
+git checkout modes-dev && git push origin modes-dev   # back up first
+git fetch upstream && git submodule update --init     # get new Lawnchair
+git checkout -b modes-17-dev upstream/17-dev          # new branch off it (must end in -dev)
+git merge modes-dev                             # add your feature
+#   ...if conflicts: fix files (git grep "// Modes:"), git add, git commit...
+git push origin modes-17-dev                    # GitHub builds the APK
+#   ...test the APK from the Actions tab...
+git tag -a v1.2.0 -m "..." && git push origin v1.2.0
+```
+
+**Escape hatch:** `git merge --abort` undoes a merge in progress and puts everything back.
