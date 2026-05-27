@@ -17,6 +17,7 @@ class ModeEngine(
     private val alarmAction: ModeAlarmAction = ModeAlarmAction(context),
     private val dndController: ModeDndController = ModeDndController(context),
     private val grayscaleController: ModeGrayscaleController = ModeGrayscaleController(context),
+    private val wallpaperController: ModeWallpaperController = ModeWallpaperController(context),
 ) {
     private val prefs2 = PreferenceManager2.getInstance(context)
 
@@ -31,5 +32,6 @@ class ModeEngine(
         // it off, so switching to Off (or any non-DND mode) clears it instead of leaving it on.
         if (dndController.hasAccess()) dndController.setEnabled(mode.dnd == true)
         grayscaleController.setEnabled(mode.grayscale)
+        runCatching { wallpaperController.apply(mode.wallpaperPath) }
     }
 }

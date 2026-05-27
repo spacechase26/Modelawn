@@ -44,6 +44,7 @@ data class Mode(
     val autoOffEnabled: Boolean = false,
     val autoOffHour: Int = 22,
     val autoOffMinute: Int = 0,
+    val wallpaperPath: String? = null,
 )
 
 @Serializable
