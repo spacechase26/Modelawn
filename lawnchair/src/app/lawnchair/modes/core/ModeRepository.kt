@@ -20,6 +20,11 @@ class ModeRepository(
 
     suspend fun delete(id: String) = store.update { it.deleteMode(id) }
 
+    /** Non-destructively add the modes from an imported [backup], each with a fresh id. */
+    suspend fun merge(backup: ModeBackup, newId: () -> String) {
+        store.update { it.mergeBackup(backup, newId) }
+    }
+
     suspend fun activate(id: String) {
         store.update { it.activate(id) }
         val active = store.state.value.activeMode()

@@ -12,5 +12,23 @@ per-mode wallpaper. Released as `v1.1.0` on branch `modes-dev`.
 | [`04-upstream-proposal.md`](./04-upstream-proposal.md) | A ready-to-adapt pitch to the Lawnchair maintainers to land Modes upstream. |
 | [`05-syncing-upstream.md`](./05-syncing-upstream.md) | How to pull a new upstream Lawnchair release into the fork while keeping Modes (the merge playbook + conflict hot-spots). |
 
+## First-time setup
+
+**Grayscale** (the per-mode "Grayscale screen" toggle) needs the `WRITE_SECURE_SETTINGS`
+permission, which a normal app can't request at runtime. Grant it once over ADB:
+
+```sh
+adb shell pm grant app.lawnchair.debug android.permission.WRITE_SECURE_SETTINGS
+```
+
+Until granted, the toggle is a no-op. (MIUI blocks `pm grant` over *wireless* ADB — use a
+USB cable or LADB.)
+
+## Back up your modes
+
+Settings → **Modes** has **Export modes to a file** / **Import modes from a file** — a
+standalone `.json` backup, separate from Lawnchair's official Backup & Restore. Import is
+non-destructive (modes are added, never overwritten). Wallpapers are not included.
+
 Deeper background (original spec, plan, recon notes) lives outside the app tree at
 `docs/superpowers/` in the repo root.

@@ -17,6 +17,7 @@
 package app.lawnchair.ui.preferences.destinations
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -55,6 +56,9 @@ import app.lawnchair.modes.ModeWallpaperController
 import app.lawnchair.modes.core.Mode
 import app.lawnchair.modes.core.ModeRepository
 import app.lawnchair.modes.core.OFF_MODE_ID
+import app.lawnchair.modes.core.decodeBackup
+import app.lawnchair.modes.core.encodeBackup
+import app.lawnchair.modes.core.toBackup
 import app.lawnchair.ui.preferences.LocalIsExpandedScreen
 import app.lawnchair.ui.preferences.components.AppItem
 import app.lawnchair.ui.preferences.components.controls.ClickablePreference
@@ -85,6 +89,47 @@ fun ModesPreferences(
     val scope = rememberCoroutineScope()
     val state by repo.state.collectAsStateWithLifecycle()
     val apps by appsState(comparator = appComparator)
+
+    // Standalone modes-only export/import (separate from Lawnchair's official Backup &
+    // Restore, so it never conflicts with upstream merges). Wallpapers are not included.
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val backup = repo.currentState().toBackup()
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openOutputStream(uri)?.use { out ->
+                        out.write(encodeBackup(backup).toByteArray())
+                    } ?: error("no output stream")
+                }.isSuccess
+            }
+            val message = if (ok) "Exported ${backup.modes.size} modes" else "Export failed"
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                }.getOrNull()
+            }
+            val backup = text?.let { decodeBackup(it) }
+            if (backup == null) {
+                Toast.makeText(context, "Couldn't read that file", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val before = repo.currentState().modes.size
+            repo.merge(backup) { UUID.randomUUID().toString() }
+            val added = repo.currentState().modes.size - before
+            Toast.makeText(context, "Imported $added modes", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     LaunchedEffect(Unit) {
         val off = state.modes.firstOrNull { it.id == DEFAULT_ID }
@@ -123,6 +168,20 @@ fun ModesPreferences(
                         }
                     },
                     showRadio = false,
+                )
+            }
+            item {
+                ClickablePreference(
+                    label = "Export modes to a file",
+                    subtitle = "Save all your modes as a .json backup",
+                    onClick = { runCatching { exportLauncher.launch("modelawn-modes.json") } },
+                )
+            }
+            item {
+                ClickablePreference(
+                    label = "Import modes from a file",
+                    subtitle = "Add modes from a .json backup — won't overwrite existing",
+                    onClick = { runCatching { importLauncher.launch(arrayOf("application/json")) } },
                 )
             }
 

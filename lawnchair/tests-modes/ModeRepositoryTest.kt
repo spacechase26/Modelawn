@@ -34,6 +34,15 @@ class ModeRepositoryTest {
         assertNull(store.flow.value.activeModeId)
     }
 
+    @Test fun mergeAddsImportedModesWithoutTouchingActive() = runBlocking {
+        val store = FakeStore(ModesState(listOf(Mode("a", "A")), "a"))
+        val repo = ModeRepository(store) {}
+        val backup = ModeBackup(modes = listOf(Mode("x", "Gym")))
+        repo.merge(backup) { "fresh" }
+        assertEquals(listOf("a", "fresh"), store.flow.value.modes.map { it.id })
+        assertEquals("a", store.flow.value.activeModeId) // active untouched
+    }
+
     @Test fun activateUnknownDoesNotChangeOrInvoke() = runBlocking {
         val store = FakeStore(ModesState(listOf(Mode("a", "A")), "a"))
         var calls = 0
