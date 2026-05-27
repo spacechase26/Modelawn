@@ -24,13 +24,15 @@ The footprint is deliberately small: **almost everything is new files in a self-
 | `ScheduleMath.kt` | `nextTriggerMillis()` — next fire time for a schedule |
 | `ModeStore.kt` | persistence interface (StateFlow + `update`) |
 | `ModeRepository.kt` | coordinates persistence with the activation side-effect |
+| `WallpaperAction.kt` | `WallpaperAction` + `decideWallpaper()` — pure per-mode-wallpaper decision (apply / restore baseline / none) |
 
 ### Android integration — `lawnchair/src/app/lawnchair/modes/`
 | File | Responsibility |
 |---|---|
 | `ModeProvider.kt` | app-scoped singletons; wires repo → engine → scheduler; widget sync |
 | `PrefsModeStore.kt` | persists `ModesState` as JSON in `PreferenceManager2` (mutex-guarded) |
-| `ModeEngine.kt` | `applyMode()` — writes `hiddenApps`, forces reload, runs routines |
+| `ModeEngine.kt` | `applyMode()` — writes `hiddenApps`, runs routines + wallpaper, forces reload; runs off the main thread (`Dispatchers.Default`) to avoid a mode-switch ANR |
+| `ModeWallpaperController.kt` | applies the per-mode wallpaper via `setStream`; imports picked images downsampled; stashes/restores the baseline |
 | `AppListProvider.kt` | enumerates installed component keys |
 | `ModeWorkspaceGating.kt` | the bridge Launcher3 (Java) calls to gate workspace/folders/widgets |
 | `ModeAlarmAction.kt` | sets a Clock alarm via `ACTION_SET_ALARM` |
@@ -43,7 +45,7 @@ The footprint is deliberately small: **almost everything is new files in a self-
 ### UI + gesture
 | File | Responsibility |
 |---|---|
-| `ui/preferences/destinations/ModesPreferences.kt` | the Settings → Modes screen (Compose) |
+| `ui/preferences/destinations/ModesPreferences.kt` | the Settings → Modes screen (Compose); includes the per-mode wallpaper picker row |
 | `gestures/handlers/ModeSwitcherGestureHandler.kt` | the bottom-sheet mode switcher |
 
 ### Resources — `lawnchair/res/`
@@ -56,9 +58,9 @@ The footprint is deliberately small: **almost everything is new files in a self-
 | `values/` + `values-night/`: `modes_widget_colors.xml` | day/night `@android:color/system_*` color refs |
 
 ### Tests — `lawnchair/tests-modes/`
-`AppGatingTest.kt`, `ModeRepositoryTest.kt`, `ModesStateOpsTest.kt`, `ScheduleMathTest.kt`
-— JUnit tests for the pure core. (Held here; run via the standalone `logic-test` Gradle
-project, see `03-ai-handoff.md`. Not wired into the app module's build.)
+`AppGatingTest.kt`, `ModeRepositoryTest.kt`, `ModesStateOpsTest.kt`, `ScheduleMathTest.kt`,
+`WallpaperOpsTest.kt` — JUnit tests for the pure core. (Held here; run via the standalone
+`logic-test` Gradle project, see `03-ai-handoff.md`. Not wired into the app module's build.)
 
 ---
 
@@ -81,7 +83,7 @@ small and tagged with a `// Modes:` comment.
 | **`lawnchair/src/app/lawnchair/ui/preferences/destinations/PreferencesDashboard.kt`** | Adds the top-level **Modes** tile to the Settings dashboard. |
 | **`lawnchair/res/values/strings.xml`** | Adds `modes_label`, `modes_description`, `gesture_handler_open_mode_switcher`. |
 | **`lawnchair/AndroidManifest.xml`** | Adds perms (`RECEIVE_BOOT_COMPLETED`, `ACCESS_NOTIFICATION_POLICY`, `SET_ALARM`, `USE_EXACT_ALARM`, `SCHEDULE_EXACT_ALARM` maxSdk32, `WRITE_SECURE_SETTINGS`) and registers `ModeScheduleReceiver` + `ModesWidgetProvider`. |
-| **`.github/workflows/ci.yml`** | Trimmed to build only `assembleLawnWithQuickstepGithubDebug` (faster CI on the fork). |
+| **`.github/workflows/ci.yml`** | Matrix builds both `assembleLawnWithQuickstepGithubDebug` (pkg `app.lawnchair.debug`) and `assembleLawnWithQuickstepGithubRelease` (R8-minified, pkg `app.lawnchair`) on the fork. |
 
 > Note: `AppDrawerPreferences.kt` is **not** in the modified list — Modes briefly lived
 > under App Drawer, then moved to its own top-level section, so the net diff vs. upstream is

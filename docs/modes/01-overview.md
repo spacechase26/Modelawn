@@ -12,7 +12,7 @@ you switch to it. It's inspired by Samsung Modes & Routines and Apple Focus, but
 defining idea is **hard gating**: when a mode is active, apps that aren't allowed simply
 aren't there — not on the home screen, not in the drawer, not in folders, not as widgets.
 
-### Feature list (v1.0.0)
+### Feature list (v1.1.0)
 
 - **Named modes**: create / rename / pick an emoji / choose allowed apps / delete.
   One built-in mode, **Off**, allows everything (no gating).
@@ -24,6 +24,11 @@ aren't there — not on the home screen, not in the drawer, not in folders, not 
   - Toggle system **grayscale** (accessibility daltonizer; needs an ADB-granted permission).
 - **Scheduling**: per-mode **auto-activate** and **auto-deactivate** (back to Off) at chosen
   times on shared day-of-week toggles. Exact, on-time alarms; survives reboot.
+- **Per-mode wallpaper**: each mode can set the home-screen wallpaper (incl. **Off**, which
+  carries the baseline to revert to). With Lawnchair's Accent set to **"Wallpaper"**, the
+  launcher accent **and themed icons** follow each mode's wallpaper via Material You. (Third-party
+  home-screen **widgets** keep their own colors — those are drawn by the OS and can't be retinted
+  by the launcher.)
 - **Switchers**:
   - A **top-level Settings → Modes** section (the editor + mode list).
   - A home-screen **widget** (active-mode header + a chip grid; tap a chip to switch).
@@ -84,8 +89,15 @@ app.lawnchair.gestures.handlers.ModeSwitcherGestureHandler   the gesture bottom 
      item and `continue`s past hidden ones. Folders consult
      `ModeWorkspaceGating.filterVisible(...)` for their preview and open grid.
 2. Runs the routine side-effects: alarm, DND (always enforced to the mode's state),
-   grayscale.
+   grayscale, and the **per-mode wallpaper** (`ModeWallpaperController`). The wallpaper is set
+   **before** the reload so themed icons re-tint to the new Material You colors on re-bind
+   (icons only recolor during a reload).
 3. The widget refreshes via a `repository.state` collector in `ModeProvider`.
+
+> **`applyMode` runs off the main thread** (`withContext(Dispatchers.Default)`). Callers
+> activate from the UI/gesture on the **Main** dispatcher, and `allComponentKeys()` +
+> `forceReload()` are heavy — running them on Main caused a mode-switch **ANR**. Keep the
+> activation work off the main thread.
 
 `hiddenApps` is an **existing** Lawnchair preference — we reuse it as the single source of
 truth for "what's hidden right now," which is why a mode switch is consistent everywhere.
@@ -141,3 +153,10 @@ reboots.
 - **Don't add our own widget to the hidden set.** `ModeWorkspaceGating.isHidden` exempts
   providers whose package starts with `app.lawnchair`, so the Modes widget stays visible
   during gating.
+- **Keep activation off the main thread.** `ModeEngine.applyMode` is `withContext(Dispatchers.Default)`
+  because `allComponentKeys()` (enumerates every installed app) + `forceReload()` block the UI
+  otherwise → a mode-switch ANR ("isn't responding"). Don't move heavy work back onto Main.
+- **Wallpaper memory:** apply via `WallpaperManager.setStream` from the stored JPEG (the system
+  decodes it) and import at screen size in RGB_565. Decoding full-res bitmaps to `setBitmap`
+  OOM'd on low-RAM devices. **Widgets can't be recolored by the launcher** (OS-drawn) — only
+  Lawnchair's own UI + themed icons follow the wallpaper.
