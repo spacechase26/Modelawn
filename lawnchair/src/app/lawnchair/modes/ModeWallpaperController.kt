@@ -9,6 +9,7 @@ import android.net.Uri
 import app.lawnchair.modes.core.WallpaperAction
 import app.lawnchair.modes.core.decideWallpaper
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,8 +22,11 @@ import kotlinx.coroutines.withContext
  * (e.g. plain Off). Capture is best-effort — some OEMs block reading the current wallpaper, in
  * which case the reliable way to revert is to give the Off mode its own wallpaper.
  *
+ * Images are imported at screen size (see [importPicked]) and applied via [WallpaperManager.setStream]
+ * so the system decodes from the small stored JPEG — keeping our peak memory low on low-RAM devices.
+ *
  * When the launcher's accent color is set to "Wallpaper", changing the wallpaper here also recolors
- * the launcher accent live via Material You (see ThemeProvider's OnColorsChangedListener).
+ * the launcher accent (and themed icons, on the next reload) via Material You.
  */
 class ModeWallpaperController(private val context: Context) {
 
@@ -42,9 +46,15 @@ class ModeWallpaperController(private val context: Context) {
         }
     }
 
+    /** Set the wallpaper by streaming the file — the framework decodes/scales, not us. */
     private fun setWallpaperFromFile(path: String) {
-        val bitmap = decodeSampled(path) ?: return
-        runCatching { wallpaperManager.setBitmap(bitmap, null, true, WallpaperManager.FLAG_SYSTEM) }
+        val file = File(path)
+        if (!file.exists()) return
+        runCatching {
+            FileInputStream(file).use { stream ->
+                wallpaperManager.setStream(stream, null, true, WallpaperManager.FLAG_SYSTEM)
+            }
+        }
     }
 
     private fun restoreBaseline() {
@@ -58,7 +68,7 @@ class ModeWallpaperController(private val context: Context) {
         stashFile.parentFile?.mkdirs()
         val viaFile = runCatching {
             wallpaperManager.getWallpaperFile(WallpaperManager.FLAG_SYSTEM)?.use { pfd ->
-                java.io.FileInputStream(pfd.fileDescriptor).use { input ->
+                FileInputStream(pfd.fileDescriptor).use { input ->
                     FileOutputStream(stashFile).use { output -> input.copyTo(output) }
                 }
                 true
@@ -73,24 +83,10 @@ class ModeWallpaperController(private val context: Context) {
         }
     }
 
-    private fun targetSize(): Pair<Int, Int> {
-        val w = wallpaperManager.desiredMinimumWidth.takeIf { it > 0 } ?: 1080
-        val h = wallpaperManager.desiredMinimumHeight.takeIf { it > 0 } ?: 1920
-        return w to h
-    }
-
-    private fun decodeSampled(path: String): Bitmap? {
-        val (tw, th) = targetSize()
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(path, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-        val opts = BitmapFactory.Options().apply { inSampleSize = computeInSampleSize(bounds, tw, th) }
-        return BitmapFactory.decodeFile(path, opts)
-    }
-
     companion object {
         private const val DIR_NAME = "mode_wallpapers"
         private const val STASH_NAME = "_baseline.jpg"
+        private const val MAX_DIMENSION = 2048
 
         private fun dir(context: Context): File = File(context.filesDir, DIR_NAME)
 
@@ -99,20 +95,27 @@ class ModeWallpaperController(private val context: Context) {
             return File(dir(context), "wp_$safe.jpg")
         }
 
-        /** Copy + downsample a picked image into app storage. Returns the stored path, or null. */
+        /**
+         * Copy a picked image into app storage, downsampled to ~screen size in RGB_565 so the
+         * stored JPEG is small and applying it later costs little memory. Returns the path, or null.
+         */
         fun importPicked(context: Context, uri: Uri, modeId: String): String? = runCatching {
             val resolver = context.contentResolver
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-            val wm = WallpaperManager.getInstance(context)
-            val tw = wm.desiredMinimumWidth.takeIf { it > 0 } ?: 1080
-            val th = wm.desiredMinimumHeight.takeIf { it > 0 } ?: 1920
-            val opts = BitmapFactory.Options().apply { inSampleSize = computeInSampleSize(bounds, tw, th) }
+            val dm = context.resources.displayMetrics
+            val tw = dm.widthPixels.coerceIn(1, MAX_DIMENSION)
+            val th = dm.heightPixels.coerceIn(1, MAX_DIMENSION)
+            val opts = BitmapFactory.Options().apply {
+                inSampleSize = computeInSampleSize(bounds, tw, th)
+                inPreferredConfig = Bitmap.Config.RGB_565
+            }
             val bitmap = resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) } ?: return null
             val file = fileFor(context, modeId)
             file.parentFile?.mkdirs()
             FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.JPEG, 92, it) }
+            bitmap.recycle()
             file.absolutePath
         }.getOrNull()
 
