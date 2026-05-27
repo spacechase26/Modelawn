@@ -15,14 +15,30 @@ per-mode wallpaper. Released as `v1.1.0` on branch `modes-dev`.
 ## First-time setup
 
 **Grayscale** (the per-mode "Grayscale screen" toggle) needs the `WRITE_SECURE_SETTINGS`
-permission, which a normal app can't request at runtime. Grant it once over ADB:
+permission, which a normal app can't request at runtime. Grant it once over ADB.
+
+First confirm the installed package name — it differs by build variant
+(`app.lawnchair.debug` for Debug, `app.lawnchair` for Release):
+
+```sh
+adb shell pm list packages | grep lawnchair
+```
+
+Then grant the permission against **that** package:
 
 ```sh
 adb shell pm grant app.lawnchair.debug android.permission.WRITE_SECURE_SETTINGS
+# Release build? use the release id instead:
+adb shell pm grant app.lawnchair android.permission.WRITE_SECURE_SETTINGS
 ```
 
-Until granted, the toggle is a no-op. (MIUI blocks `pm grant` over *wireless* ADB — use a
-USB cable or LADB.)
+Granting against the wrong variant fails with `Unknown package` — the usual reason the
+toggle stays a no-op even after running the command. (MIUI blocks `pm grant` over
+*wireless* ADB — use a USB cable or LADB.)
+
+The toggle also only appears for a non-"Off" mode: Settings → **Modes** → tap a real
+mode → scroll to **Grayscale screen**. Once granted, its subtitle changes from "Needs a
+one-time ADB grant" to "Desaturates the whole screen…".
 
 ## Back up your modes
 
