@@ -16,8 +16,12 @@
 
 package app.lawnchair.ui.preferences.destinations
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,6 +43,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,10 +51,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.lawnchair.modes.ModeProvider
+import app.lawnchair.modes.ModeWallpaperController
 import app.lawnchair.modes.core.Mode
+import app.lawnchair.modes.core.ModeRepository
 import app.lawnchair.modes.core.OFF_MODE_ID
 import app.lawnchair.ui.preferences.LocalIsExpandedScreen
 import app.lawnchair.ui.preferences.components.AppItem
+import app.lawnchair.ui.preferences.components.controls.ClickablePreference
 import app.lawnchair.ui.preferences.components.controls.SwitchPreference
 import app.lawnchair.ui.preferences.components.layout.PreferenceLazyColumn
 import app.lawnchair.ui.preferences.components.layout.PreferenceScaffold
@@ -57,7 +65,10 @@ import app.lawnchair.ui.preferences.components.layout.preferenceGroupItems
 import app.lawnchair.util.appComparator
 import app.lawnchair.util.appsState
 import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val DEFAULT_ID = OFF_MODE_ID
 
@@ -150,6 +161,9 @@ fun ModesPreferences(
                             )
                         }
                     }
+                }
+                item {
+                    ModeWallpaperSection(active = active, repo = repo, scope = scope)
                 }
                 item {
                     val alarmTime = "Alarm at %02d:%02d".format(active.alarm.hour, active.alarm.minute)
@@ -355,6 +369,7 @@ fun ModesPreferences(
                     TextButton(
                         onClick = {
                             scope.launch {
+                                ModeWallpaperController.deleteFor(context, active.id)
                                 repo.delete(active.id)
                                 repo.activate(DEFAULT_ID)
                             }
@@ -371,8 +386,68 @@ fun ModesPreferences(
                         modifier = Modifier.padding(16.dp),
                     )
                 }
+                if (active != null) {
+                    item {
+                        ModeWallpaperSection(active = active, repo = repo, scope = scope)
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun ModeWallpaperSection(
+    active: Mode,
+    repo: ModeRepository,
+    scope: CoroutineScope,
+) {
+    val context = LocalContext.current
+    val current by rememberUpdatedState(active)
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val uri = result.data?.data ?: return@rememberLauncherForActivityResult
+        val mode = current
+        scope.launch {
+            val path = withContext(Dispatchers.IO) { ModeWallpaperController.importPicked(context, uri, mode.id) }
+            if (path != null) {
+                repo.upsert(mode.copy(wallpaperPath = path))
+                // Re-apply if this mode is active so the new wallpaper takes effect now.
+                if (repo.currentState().activeModeId == mode.id) repo.activate(mode.id)
+            }
+        }
+    }
+    val hasWallpaper = active.wallpaperPath != null
+    Column(modifier = Modifier.fillMaxWidth()) {
+        ClickablePreference(
+            label = "Wallpaper",
+            subtitle = if (hasWallpaper) "Image set — tap to change" else "Tap to choose an image",
+            onClick = {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+                    .addCategory(Intent.CATEGORY_OPENABLE)
+                    .setType("image/*")
+                runCatching { picker.launch(intent) }
+            },
+        )
+        if (hasWallpaper) {
+            ClickablePreference(
+                label = "Remove wallpaper",
+                confirmationText = "Remove this mode's wallpaper?",
+                onClick = {
+                    val mode = current
+                    scope.launch {
+                        repo.upsert(mode.copy(wallpaperPath = null))
+                        ModeWallpaperController.deleteFor(context, mode.id)
+                        if (repo.currentState().activeModeId == mode.id) repo.activate(mode.id)
+                    }
+                },
+            )
+        }
+        Text(
+            text = "Tip: set Accent color to “Wallpaper” (Settings → General) so the accent follows each mode's wallpaper.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
     }
 }
 
